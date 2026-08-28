@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solar Scramble</title>
+</head>
+<body>
+
+<style>
+  .solar-game { font-family: Georgia, serif; max-width: 900px; margin: 20px auto; padding: 28px; color: #17202a; background: linear-gradient(135deg, #fff8e7, #dff3f0); border: 1px solid #b8d8d4; border-radius: 18px; box-shadow: 0 18px 45px rgba(31, 75, 77, .16); }
+  .solar-game h1 { margin: 0; font-size: 2.4rem; color: #183b56; }
+  .solar-game .tagline { color: #52717a; margin: 6px 0 24px; }
+  .solar-grid { display: grid; grid-template-columns: 1.35fr .85fr; gap: 22px; }
+  .play-panel, .leaderboard { background: rgba(255,255,255,.74); border: 1px solid #c8dfdc; border-radius: 12px; padding: 22px; }
+  .stats { display: flex; justify-content: space-between; gap: 12px; color: #52717a; font-size: .95rem; }
+  .word { margin: 28px 0 18px; text-align: center; font: 700 2.8rem Georgia, serif; letter-spacing: .16em; color: #e76f51; }
+  .message { min-height: 26px; text-align: center; color: #183b56; font-weight: 700; }
+  .game-form { display: flex; gap: 10px; }
+  .game-form input { flex: 1; min-width: 0; padding: 13px; border: 1px solid #9bc7c4; border-radius: 8px; font: inherit; }
+  button { padding: 12px 16px; border: 0; border-radius: 8px; background: #183b56; color: white; font: 700 1rem Georgia, serif; cursor: pointer; }
+  button:hover { background: #2a6672; }
+  .hint, .restart { margin-top: 12px; background: #e76f51; }
+  .hint:hover, .restart:hover { background: #c9553c; }
+  .hidden { display: none; }
+  .leaderboard h2 { margin-top: 0; color: #183b56; }
+  .scores { margin: 0; padding-left: 28px; }
+  .scores li { padding: 7px 0; border-bottom: 1px solid #dcebe9; }
+  .empty { color: #52717a; font-style: italic; }
+  @media (max-width: 700px) { .solar-grid { grid-template-columns: 1fr; } .solar-game { padding: 18px; } .game-form { flex-direction: column; } .word { font-size: 2.2rem; } }
+</style>
+<section class="solar-game" id="solar-scramble">
+  <h1>Solar Scramble</h1>
+  <p class="tagline">Unscramble the cosmos, build your streak, reach the stars.</p>
+  <div class="solar-grid">
+    <div class="play-panel">
+      <div class="stats"><span>Round <b id="round">1</b>/5</span><span>Score <b id="score">0</b></span><span>Streak <b id="streak">0</b></span></div>
+      <div class="word" id="scrambled">READY</div>
+      <p class="message" id="message">Press New Game to begin.</p>
+      <form class="game-form" id="guess-form">
+        <input id="guess" autocomplete="off" placeholder="Type your answer" aria-label="Your answer">
+        <button type="submit">Guess</button>
+      </form>
+      <button class="hint" id="hint" type="button">Show hint (-2)</button>
+      <button class="restart" id="restart" type="button">New game</button>
+    </div>
+    <aside class="leaderboard">
+      <h2>Leaderboard</h2>
+      <ol class="scores" id="scores"></ol>
+      <p class="empty" id="empty">No scores yet. Claim the first place.</p>
+    </aside>
+  </div>
+</section>
+<script>
+(() => {
+  const words = [
+    ['mercury', 'The smallest planet and closest to the Sun.'],
+    ['venus', 'The hottest planet in our solar system.'],
+    ['earth', 'The only known planet with life.'],
+    ['mars', 'The red planet.'],
+    ['jupiter', 'The largest planet in the solar system.'],
+    ['saturn', 'This planet is famous for its rings.'],
+    ['uranus', 'An ice giant that rotates on its side.'],
+    ['neptune', 'The farthest major planet from the Sun.'],
+    ['asteroid', 'A rocky object that orbits the Sun.'],
+    ['comet', 'An icy object that can grow a glowing tail.'],
+    ['galaxy', 'A huge collection of stars, gas, and dust.'],
+    ['orbit', 'The curved path of one object around another.']
+  ];
+  const $ = id => document.getElementById(id);
+  let round, score, streak, current, hintUsed, active;
+  const scramble = word => { let mixed; do { mixed = [...word].sort(() => Math.random() - .5).join(''); } while (mixed === word); return mixed; };
+  const renderScores = () => {
+    const scores = JSON.parse(localStorage.getItem('solarScrambleScores') || '[]');
+    $('scores').innerHTML = scores.slice(0, 5).map(item => `<li><strong>${item.name}</strong> <span>${item.score} pts</span></li>`).join('');
+    $('empty').classList.toggle('hidden', scores.length > 0);
+  };
+  const nextRound = () => {
+    if (round >= 5) return finish();
+    current = words[Math.floor(Math.random() * words.length)];
+    $('round').textContent = round + 1;
+    $('scrambled').textContent = scramble(current[0]);
+    $('message').textContent = hintUsed ? 'New round. Good luck!' : 'Unscramble the word.';
+    $('guess').value = ''; $('guess').focus(); hintUsed = false;
+  };
+  const finish = () => {
+    active = false; $('guess').disabled = true; $('hint').disabled = true;
+    const name = prompt(`Game over! Your score is ${score}. Enter your name for the leaderboard:`) || 'Astronaut';
+    const scores = JSON.parse(localStorage.getItem('solarScrambleScores') || '[]');
+    scores.push({ name: name.slice(0, 18), score }); scores.sort((a, b) => b.score - a.score);
+    localStorage.setItem('solarScrambleScores', JSON.stringify(scores.slice(0, 10))); renderScores();
+    $('message').textContent = `Final score: ${score}. Start a new game to play again.`;
+  };
+  $('restart').onclick = () => { round = 0; score = 0; streak = 0; active = true; $('guess').disabled = false; $('hint').disabled = false; $('score').textContent = 0; $('streak').textContent = 0; nextRound(); };
+  $('hint').onclick = () => { if (active && !hintUsed) { hintUsed = true; $('message').textContent = `Hint: ${current[1]}`; } };
+  $('guess-form').onsubmit = event => { event.preventDefault(); if (!active) return; const guess = $('guess').value.trim().toLowerCase(); if (!guess) return; if (guess === current[0]) { streak++; score += Math.max(2, 10 - (hintUsed ? 2 : 0) + streak * 2); $('score').textContent = score; $('streak').textContent = streak; round++; $('message').textContent = 'Correct!'; setTimeout(nextRound, 500); } else { streak = 0; $('streak').textContent = 0; $('message').textContent = 'Not quite. Try again.'; } };
+  renderScores();
+})();
+</script>
+
+</body>
+</html>
