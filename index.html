@@ -70,8 +70,12 @@
   const $ = id => document.getElementById(id);
   let round, score, streak, current, hintUsed, active;
   const scramble = word => { let mixed; do { mixed = [...word].sort(() => Math.random() - .5).join(''); } while (mixed === word); return mixed; };
-  const renderScores = () => {
-    const scores = JSON.parse(localStorage.getItem('solarScrambleScores') || '[]');
+  const renderScores = async () => {
+    let scores = [];
+    try {
+      const res = await fetch('/api/leaderboard');
+      if (res.ok) scores = await res.json();
+    } catch (err) { /* leaderboard temporarily unavailable */ }
     $('scores').innerHTML = scores.slice(0, 5).map(item => `<li><strong>${item.name}</strong> <span>${item.score} pts</span></li>`).join('');
     $('empty').classList.toggle('hidden', scores.length > 0);
   };
@@ -83,12 +87,17 @@
     $('message').textContent = hintUsed ? 'New round. Good luck!' : 'Unscramble the word.';
     $('guess').value = ''; $('guess').focus(); hintUsed = false;
   };
-  const finish = () => {
+  const finish = async () => {
     active = false; $('guess').disabled = true; $('hint').disabled = true;
     const name = prompt(`Game over! Your score is ${score}. Enter your name for the leaderboard:`) || 'Astronaut';
-    const scores = JSON.parse(localStorage.getItem('solarScrambleScores') || '[]');
-    scores.push({ name: name.slice(0, 18), score }); scores.sort((a, b) => b.score - a.score);
-    localStorage.setItem('solarScrambleScores', JSON.stringify(scores.slice(0, 10))); renderScores();
+    try {
+      await fetch('/api/leaderboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.slice(0, 18), score }),
+      });
+    } catch (err) { /* leaderboard temporarily unavailable */ }
+    await renderScores();
     $('message').textContent = `Final score: ${score}. Start a new game to play again.`;
   };
   $('restart').onclick = () => { round = 0; score = 0; streak = 0; active = true; $('guess').disabled = false; $('hint').disabled = false; $('score').textContent = 0; $('streak').textContent = 0; nextRound(); };
