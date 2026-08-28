@@ -1,0 +1,13 @@
+{
+  "name": "solarscramble",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@netlify/database": "^1.0.0",
+    "drizzle-orm": "beta"
+  },
+  "devDependencies": {
+    "drizzle-kit": "beta"
+  }
+}
